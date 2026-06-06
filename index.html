@@ -1,0 +1,52 @@
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cryptic Setting Helper</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script defer src="js/search.js"></script>
+  <script defer src="js/page.js"></script>
+  <script>
+    window.addEventListener('load', () => { initPage(); });
+  </script>
+</head>
+
+<body>
+  <div id="app">
+    <div id="header">
+      <h1>Cryptic Setting Helper</h1>
+      <p>Find words by pattern or anagram, ranked by frequency</p>
+    </div>
+
+    <div id="tabs">
+      <button class="tab active" data-tab="pattern">Pattern</button>
+      <button class="tab" data-tab="anagram">Anagram</button>
+    </div>
+
+    <div id="pattern-panel" class="panel active">
+      <form id="pattern-form">
+        <input id="pattern-input" type="text" placeholder="e.g. C??T or ?R?W?" autocomplete="off" spellcheck="false">
+        <button type="submit">Search</button>
+      </form>
+      <p class="hint">
+        <code>?</code> or <code>.</code> = any letter &middot;
+        <code>[abc]</code> = one of &middot;
+        letters match exactly
+      </p>
+    </div>
+
+    <div id="anagram-panel" class="panel">
+      <form id="anagram-form">
+        <input id="anagram-input" type="text" placeholder="e.g. EART" autocomplete="off" spellcheck="false">
+        <button type="submit">Find Anagrams</button>
+      </form>
+    </div>
+
+    <div id="status"></div>
+    <div id="results"></div>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,71 @@
+class WordSearch {
+  _words = null;
+  _rankOf = null;
+  _loadPromise = null;
+
+  load() {
+    if (this._loadPromise) return this._loadPromise;
+    this._loadPromise = fetch('data/words.txt')
+      .then(r => r.text())
+      .then(text => {
+        this._words = text.trim().split('\n');
+        this._rankOf = new Map(this._words.map((w, i) => [w, i]));
+      });
+    return this._loadPromise;
+  }
+
+  isLoaded() {
+    return this._words !== null;
+  }
+
+  // Returns [word, rank] pairs in frequency order, or null if pattern is invalid.
+  pattern(patternStr) {
+    const regex = this._patternToRegex(patternStr);
+    if (!regex) return null;
+    return this._words
+      .map((w, i) => [w, i])
+      .filter(([w]) => regex.test(w));
+  }
+
+  // Returns [word, rank] pairs in frequency order.
+  anagram(letters) {
+    const cleaned = letters.toLowerCase().replace(/[^a-z]/g, '');
+    if (!cleaned.length) return [];
+    const sorted = cleaned.split('').sort().join('');
+    return this._words
+      .map((w, i) => [w, i])
+      .filter(([w]) => {
+        if (w.length !== cleaned.length) return false;
+        return w.split('').sort().join('') === sorted;
+      });
+  }
+
+  _patternToRegex(pattern) {
+    let regexStr = '^';
+    const lower = pattern.toLowerCase();
+    let i = 0;
+    while (i < lower.length) {
+      const c = lower[i];
+      if (c === '?' || c === '.') {
+        regexStr += '[a-z]';
+        i++;
+      } else if (c === '[') {
+        const j = lower.indexOf(']', i);
+        if (j === -1) return null;
+        regexStr += lower.slice(i, j + 1);
+        i = j + 1;
+      } else if (/[a-z]/.test(c)) {
+        regexStr += c;
+        i++;
+      } else {
+        return null;
+      }
+    }
+    regexStr += '$';
+    try {
+      return new RegExp(regexStr);
+    } catch (_) {
+      return null;
+    }
+  }
+}
