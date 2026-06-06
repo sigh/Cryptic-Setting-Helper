@@ -112,6 +112,21 @@
   gap: 6px;
 }
 
+.anagram-combo {
+  display: flex;
+  gap: 0;
+}
+.anagram-combo .word-item {
+  border-radius: 0;
+}
+.anagram-combo .word-item:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.anagram-combo .word-item:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+
 /* Shared base for all word pills */
 .word-item, .hw {
   font-family: Monaco, "Lucida Console", monospace;

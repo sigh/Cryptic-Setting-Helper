@@ -55,11 +55,31 @@ const containsMode = makeEdgeMode('contains', 'Contains', (s, q) => s.contains(q
 const prefixMode = makeEdgeMode('prefix', 'Prefix', (s, q) => s.prefix(q));
 const suffixMode = makeEdgeMode('suffix', 'Suffix', (s, q) => s.suffix(q));
 
-const anagramMode = makeWordMode(
-  'anagram', 'Anagram',
-  (query) => /^[a-z]+$/i.test(query),
-  (search, query) => search.anagram(query),
-);
+const anagramMode = (() => {
+  const renderResult = ({ words }) => {
+    if (words.length === 1) {
+      const [[word, wordRank]] = words;
+      const el = document.createElement('div');
+      el.className = `word-item ${frequencyTier(wordRank)}`;
+      el.textContent = word.toUpperCase();
+      return el;
+    }
+    const el = document.createElement('div');
+    el.className = 'anagram-combo';
+    words.forEach(([word, wordRank]) => {
+      const pill = document.createElement('span');
+      pill.className = `word-item ${frequencyTier(wordRank)}`;
+      pill.textContent = word.toUpperCase();
+      el.appendChild(pill);
+    });
+    return el;
+  };
+  return {
+    id: 'anagram', label: 'Anagram', maxResults: 200, defaultShow: 20,
+    gridClass: 'word-grid', isValid: q => /^[a-z]+$/i.test(q),
+    run: (search, query) => search.anagram(query), renderResult,
+  };
+})();
 
 const hasMid = (midOptions) => midOptions[0].length > 0;
 

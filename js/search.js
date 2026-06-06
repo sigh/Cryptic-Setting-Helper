@@ -60,12 +60,91 @@ class WordSearch {
     return results;
   }
 
-  // Returns [word, rank][] in frequency order via pre-built index.
+  // Returns { words: [word, rank][], rank }[] sorted by rank.
+  // Includes single-word and multi-word anagrams.
+  // Excludes results where words.join('') === cleaned query (same letter order as input).
   anagram(letters) {
     const cleaned = letters.toLowerCase().replace(/[^a-z]/g, '');
     if (!cleaned.length) return [];
-    const key = cleaned.split('').sort().join('');
-    return this._anagramIndex.get(key) || [];
+
+    const queryKey = cleaned.split('').sort().join('');
+    const results = [];
+
+    // Single-word anagrams via index
+    for (const [word, rank] of (this._anagramIndex.get(queryKey) || [])) {
+      if (word !== cleaned) results.push({ words: [[word, rank]], rank });
+    }
+
+    // Multi-word anagrams: enumerate sub-multisets of remaining letters via anagram index.
+    // Using the index directly avoids scanning the full word list.
+    // Canonical word order (non-decreasing sorted-key) prevents duplicate combinations.
+    const MAX_MULTI = 500;
+    let multiCount = 0;
+    const current = [];
+
+    const solve = (remainingKey, minSubKey) => {
+      if (multiCount >= MAX_MULTI) return;
+      if (!remainingKey) {
+        const joined = current.map(([w]) => w).join('');
+        if (joined !== cleaned) {
+          const avgRank = current.reduce((s, [, r]) => s + r, 0) / current.length;
+          results.push({ words: [...current], rank: avgRank });
+          multiCount++;
+        }
+        return;
+      }
+      for (const subKey of this._subMultisets(remainingKey)) {
+        if (subKey < minSubKey) continue;
+        if (current.length === 0 && subKey === queryKey) continue; // single-word handled above
+        const wordList = this._anagramIndex.get(subKey);
+        if (!wordList) continue;
+        const rest = this._subtractSortedKey(remainingKey, subKey);
+        for (const [word, rank] of wordList) {
+          current.push([word, rank]);
+          solve(rest, subKey);
+          current.pop();
+          if (multiCount >= MAX_MULTI) return;
+        }
+      }
+    };
+
+    solve(queryKey, '');
+    results.sort((a, b) => a.rank - b.rank);
+    return results;
+  }
+
+  // All non-empty sub-multisets of a sorted letter string, returned as sorted strings.
+  _subMultisets(sortedStr) {
+    const runs = [];
+    let i = 0;
+    while (i < sortedStr.length) {
+      const ch = sortedStr[i];
+      let j = i;
+      while (j < sortedStr.length && sortedStr[j] === ch) j++;
+      runs.push([ch, j - i]);
+      i = j;
+    }
+    const out = [];
+    const build = (idx, acc) => {
+      if (idx === runs.length) {
+        if (acc) out.push(acc);
+        return;
+      }
+      const [ch, count] = runs[idx];
+      for (let n = 0; n <= count; n++) build(idx + 1, n === 0 ? acc : acc + ch.repeat(n));
+    };
+    build(0, '');
+    return out;
+  }
+
+  // Remove letters of sorted string b from sorted string a (b must be a sub-multiset of a).
+  _subtractSortedKey(a, b) {
+    let out = '', ai = 0, bi = 0;
+    while (ai < a.length) {
+      if (bi < b.length && a[ai] === b[bi]) { bi++; ai++; }
+      else { out += a[ai++]; }
+    }
+    return out;
   }
 
   // Returns grouped hidden-word results.
