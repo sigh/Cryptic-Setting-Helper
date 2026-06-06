@@ -16,13 +16,13 @@ import urllib.request
 URL = 'https://raw.githubusercontent.com/IlyaSemenov/wikipedia-word-frequency/master/results/enwiki-2023-04-13.txt'
 OUTPUT = os.path.join(os.path.dirname(__file__), '..', 'data', 'words.txt')
 MAX_WORDS = 50000
-MIN_LENGTH = 3
-
-WORD_RE = re.compile(r'^[a-z]{' + str(MIN_LENGTH) + r',}$')
+TWO_LETTER_RANK_CUTOFF = 2000
+WORD_RE = re.compile(r'^[a-z]+$')
 
 
 def process(lines):
     words = []
+    rank = 0  # position among all alpha words seen in source
     for line in lines:
         if isinstance(line, bytes):
             line = line.decode('utf-8', errors='ignore')
@@ -30,10 +30,19 @@ def process(lines):
         if not parts:
             continue
         word = parts[0]
-        if WORD_RE.match(word):
-            words.append(word)
-            if len(words) >= MAX_WORDS:
-                break
+        if not WORD_RE.match(word):
+            continue
+        rank += 1
+        length = len(word)
+        if length == 1:
+            if word not in ('a', 'i'):
+                continue
+        elif length == 2:
+            if rank > TWO_LETTER_RANK_CUTOFF:
+                continue
+        words.append(word)
+        if len(words) >= MAX_WORDS:
+            break
     return words
 
 
