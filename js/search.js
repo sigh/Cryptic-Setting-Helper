@@ -1,6 +1,6 @@
 class WordSearch {
   _words = null;
-  _rankOf = null;
+  _anagramIndex = null;  // Map<sorted-letters, [word, rank][]>
   _loadPromise = null;
 
   load() {
@@ -9,13 +9,14 @@ class WordSearch {
       .then(r => r.text())
       .then(text => {
         this._words = text.trim().split('\n');
-        this._rankOf = new Map(this._words.map((w, i) => [w, i]));
+        this._anagramIndex = new Map();
+        this._words.forEach((w, i) => {
+          const key = w.split('').sort().join('');
+          if (!this._anagramIndex.has(key)) this._anagramIndex.set(key, []);
+          this._anagramIndex.get(key).push([w, i]);
+        });
       });
     return this._loadPromise;
-  }
-
-  isLoaded() {
-    return this._words !== null;
   }
 
   // Returns [word, rank] pairs in frequency order, or null if pattern is invalid.
@@ -27,17 +28,12 @@ class WordSearch {
       .filter(([w]) => regex.test(w));
   }
 
-  // Returns [word, rank] pairs in frequency order.
+  // Returns [word, rank] pairs in frequency order via pre-built index.
   anagram(letters) {
     const cleaned = letters.toLowerCase().replace(/[^a-z]/g, '');
     if (!cleaned.length) return [];
-    const sorted = cleaned.split('').sort().join('');
-    return this._words
-      .map((w, i) => [w, i])
-      .filter(([w]) => {
-        if (w.length !== cleaned.length) return false;
-        return w.split('').sort().join('') === sorted;
-      });
+    const key = cleaned.split('').sort().join('');
+    return this._anagramIndex.get(key) || [];
   }
 
   _patternToRegex(pattern) {
