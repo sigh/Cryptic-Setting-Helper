@@ -24,14 +24,53 @@ const makeWordMode = (id, label, isValid, run) => ({
   },
 });
 
+// ---- Shared helpers for word-result modes ----
+
+const renderWordItem = ({ words }) => {
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  words.forEach(([word, rank]) => {
+    const s = document.createElement('span');
+    s.className = `hit ${frequencyTier(rank)}`;
+    s.textContent = word.toUpperCase();
+    chip.appendChild(s);
+  });
+  return chip;
+};
+
+// Groups items (each with a .words array) by word count, sorted fewest-first.
+const groupByWordCount = (items) => {
+  const map = new Map();
+  for (const item of items) {
+    const n = item.words.length;
+    if (!map.has(n)) map.set(n, []);
+    map.get(n).push(item);
+  }
+  return [...map.keys()].sort((a, b) => a - b).map(k => map.get(k));
+};
+
 // ---- Mode definitions ----
 // Each mode is self-contained: isValid, run, renderResult, maxResults, gridClass.
+// Modes with grouped:true return item[][] from run(); others return item[].
 
-const matchMode = makeWordMode(
-  'match', 'Match',
-  (query) => query.length > 0,
-  (search, query) => search.match(query),
-);
+const matchMode = {
+  id: 'match', label: 'Match',
+  maxResults: 200, defaultShow: 20, gridClass: 'word-grid',
+  grouped: true,
+  isValid: (query) => query.length > 0,
+  renderResult: renderWordItem,
+  run(search, query) {
+    if (/^[a-z]+$/i.test(query)) {
+      const items = search.matchSegments(query).map(words => ({
+        words,
+        rank: words.reduce((s, [, r]) => s + r, 0),
+      }));
+      return groupByWordCount(items);
+    }
+    const results = search.match(query);
+    return results === null ? null : [results.map(([word, rank]) => ({ words: [[word, rank]] }))];
+  },
+};
 
 const makeEdgeMode = (id, label, run) => {
   const renderResult = ({ rank, before, match, after }) => {
@@ -58,29 +97,14 @@ const containsMode = makeEdgeMode('contains', 'Contains', (s, q) => s.contains(q
 const prefixMode = makeEdgeMode('prefix', 'Prefix', (s, q) => s.prefix(q));
 const suffixMode = makeEdgeMode('suffix', 'Suffix', (s, q) => s.suffix(q));
 
-const anagramMode = (() => {
-  const renderResult = (item) => {
-    if (item._break) {
-      const br = document.createElement('div');
-      br.className = 'anagram-break';
-      return br;
-    }
-    const chip = document.createElement('div');
-    chip.className = 'chip';
-    item.words.forEach(([word, rank]) => {
-      const s = document.createElement('span');
-      s.className = `hit ${frequencyTier(rank)}`;
-      s.textContent = word.toUpperCase();
-      chip.appendChild(s);
-    });
-    return chip;
-  };
-  return {
-    id: 'anagram', label: 'Anagram', maxResults: 200, defaultShow: 20,
-    gridClass: 'word-grid', isValid: q => /^[a-z]+$/i.test(q),
-    run: (search, query) => search.anagram(query), renderResult,
-  };
-})();
+const anagramMode = {
+  id: 'anagram', label: 'Anagram',
+  maxResults: 200, defaultShow: 20, gridClass: 'word-grid',
+  grouped: true,
+  isValid: q => /^[a-z]+$/i.test(q),
+  renderResult: renderWordItem,
+  run: (search, query) => groupByWordCount(search.anagram(query)),
+};
 
 const hasMid = (midOptions) => midOptions[0].length > 0;
 
@@ -232,13 +256,14 @@ const MODES = [matchMode, containsMode, prefixMode, suffixMode, anagramMode, hid
 // ---- Shared UI ----
 
 class ResultsSection {
-  constructor(el, label, renderResult, maxResults, defaultShow, gridClass) {
+  constructor(el, label, renderResult, maxResults, defaultShow, gridClass, grouped = false) {
     this._el = el;
     this._label = label;
     this._renderResult = renderResult;
     this._maxResults = maxResults;
     this._defaultShow = defaultShow;
     this._gridClass = gridClass;
+    this._grouped = grouped;
     this._expanded = false;
     this._items = null;
   }
@@ -257,57 +282,69 @@ class ResultsSection {
 
   _render() {
     this._el.innerHTML = '';
-    const items = this._items;
+    const data = this._items;
 
     const header = document.createElement('div');
     header.className = 'section-header';
 
-    if (items === null) {
+    if (data === null) {
       header.textContent = `${this._label} · invalid pattern`;
       this._el.appendChild(header);
       return;
     }
 
-    const realItems = items.filter(it => !it._break);
+    // Normalise to groups: grouped modes return item[][], others return item[].
+    const groups = this._grouped ? data : [data];
+    const total = groups.reduce((n, g) => n + g.length, 0);
 
     header.textContent = `${this._label} · `;
     const count = document.createElement('span');
     count.className = 'count';
-    count.textContent = `${realItems.length} result${realItems.length !== 1 ? 's' : ''}`;
+    count.textContent = `${total} result${total !== 1 ? 's' : ''}`;
     header.appendChild(count);
     this._el.appendChild(header);
 
-    if (!realItems.length) return;
+    if (!total) return;
 
-    const showReal = this._expanded
-      ? Math.min(realItems.length, this._maxResults)
-      : Math.min(realItems.length, this._defaultShow);
+    const showTotal = this._expanded
+      ? Math.min(total, this._maxResults)
+      : Math.min(total, this._defaultShow);
 
     const grid = document.createElement('div');
     grid.className = this._gridClass;
-    let realShown = 0;
-    for (const item of items) {
-      if (realShown >= showReal) break;
-      grid.appendChild(this._renderResult(item));
-      if (!item._break) realShown++;
+    let shown = 0;
+    let firstGroup = true;
+    for (const group of groups) {
+      if (shown >= showTotal) break;
+      if (!firstGroup) {
+        const br = document.createElement('div');
+        br.className = 'anagram-break';
+        grid.appendChild(br);
+      }
+      firstGroup = false;
+      for (const item of group) {
+        if (shown >= showTotal) break;
+        grid.appendChild(this._renderResult(item));
+        shown++;
+      }
     }
     this._el.appendChild(grid);
 
-    if (this._expanded && realItems.length > this._maxResults) {
+    if (this._expanded && total > this._maxResults) {
       const note = document.createElement('p');
       note.className = 'more-note';
-      note.textContent = `Showing ${this._maxResults} of ${realItems.length}`;
+      note.textContent = `Showing ${this._maxResults} of ${total}`;
       this._el.appendChild(note);
     }
 
-    if (realItems.length > this._defaultShow) {
+    if (total > this._defaultShow) {
       const toggle = document.createElement('button');
       toggle.className = 'expand-toggle';
       if (this._expanded) {
         toggle.textContent = 'Show fewer';
         toggle.addEventListener('click', () => { this._expanded = false; this._render(); });
       } else {
-        const more = Math.min(realItems.length, this._maxResults) - this._defaultShow;
+        const more = Math.min(total, this._maxResults) - this._defaultShow;
         toggle.textContent = `Show ${more} more`;
         toggle.addEventListener('click', () => { this._expanded = true; this._render(); });
       }
@@ -375,7 +412,7 @@ const initPage = () => {
     el.className = 'result-section';
     resultsEl.appendChild(el);
     sections[mode.id] = new ResultsSection(
-      el, mode.label, mode.renderResult, mode.maxResults, mode.defaultShow, mode.gridClass
+      el, mode.label, mode.renderResult, mode.maxResults, mode.defaultShow, mode.gridClass, mode.grouped
     );
   });
 

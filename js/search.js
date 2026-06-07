@@ -33,6 +33,14 @@ class WordSearch {
     return this._loadPromise;
   }
 
+  // Returns all segmentations of s into dictionary words as [word, rank][][].
+  // Only works for plain letter strings; returns [] for anything else.
+  matchSegments(s) {
+    if (!/^[a-z]+$/i.test(s)) return [];
+    return this._wordBreak(s.toLowerCase())
+      .map(seg => seg.map(w => [w, this._wordRank.get(w) ?? 49999]));
+  }
+
   // Returns [word, rank][] in frequency order, or null if pattern is invalid.
   match(patternStr) {
     const inner = this._patternToInner(patternStr);
@@ -112,16 +120,7 @@ class WordSearch {
     results.sort((a, b) =>
       a.words.length !== b.words.length ? a.words.length - b.words.length : a.rank - b.rank
     );
-    const out = [];
-    let prevLen = 0;
-    for (const r of results) {
-      if (r.words.length !== prevLen) {
-        if (prevLen > 0) out.push({ _break: true });
-        prevLen = r.words.length;
-      }
-      out.push(r);
-    }
-    return out;
+    return results;
   }
 
   // All non-empty sub-multisets of a sorted letter string, returned as sorted strings.
