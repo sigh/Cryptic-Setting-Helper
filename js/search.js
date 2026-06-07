@@ -109,8 +109,19 @@ class WordSearch {
     };
 
     solve(queryKey, '');
-    results.sort((a, b) => a.rank - b.rank);
-    return results;
+    results.sort((a, b) =>
+      a.words.length !== b.words.length ? a.words.length - b.words.length : a.rank - b.rank
+    );
+    const out = [];
+    let prevLen = 0;
+    for (const r of results) {
+      if (r.words.length !== prevLen) {
+        if (prevLen > 0) out.push({ _break: true });
+        prevLen = r.words.length;
+      }
+      out.push(r);
+    }
+    return out;
   }
 
   // All non-empty sub-multisets of a sorted letter string, returned as sorted strings.
@@ -196,7 +207,9 @@ class WordSearch {
 
         // All segmentations of the middle become alternatives within one group
         const middle = q.slice(jStart, jEnd);
-        const midOptions = middle.length === 0 ? [[]] : this._wordBreak(middle);
+        const midOptions = middle.length === 0
+          ? [[]]
+          : this._wordBreak(middle).map(opt => opt.map(w => [w, this._wordRank.get(w) ?? 49999]));
         if (midOptions.length && groups.length < MAX_GROUPS) {
           groups.push({ tail, head, midOptions, w0Words, wLastWords, topPairs });
         }

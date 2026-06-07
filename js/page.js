@@ -14,10 +14,13 @@ const makeWordMode = (id, label, isValid, run) => ({
   isValid,
   run,
   renderResult: ([word, rank]) => {
-    const el = document.createElement('div');
-    el.className = `word-item ${frequencyTier(rank)}`;
-    el.textContent = word.toUpperCase();
-    return el;
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    const hit = document.createElement('span');
+    hit.className = `hit ${frequencyTier(rank)}`;
+    hit.textContent = word.toUpperCase();
+    chip.appendChild(hit);
+    return chip;
   },
 });
 
@@ -31,19 +34,19 @@ const matchMode = makeWordMode(
 );
 
 const makeEdgeMode = (id, label, run) => {
-  const renderResult = ({ word, rank, before, match, after }) => {
-    const el = document.createElement('div');
-    el.className = `word-item ${frequencyTier(rank)}`;
-    const addSpan = (cls, text) => {
-      const s = document.createElement('span');
-      s.className = cls;
-      s.textContent = text.toUpperCase();
-      el.appendChild(s);
-    };
-    if (before) addSpan('contains-ctx', before);
-    addSpan('contains-match', match);
-    if (after) addSpan('contains-ctx', after);
-    return el;
+  const renderResult = ({ rank, before, match, after }) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    const wordEl = document.createElement('span');
+    wordEl.className = frequencyTier(rank);
+    if (before) wordEl.append(before.toUpperCase());
+    const hitEl = document.createElement('span');
+    hitEl.className = 'hit';
+    hitEl.textContent = match.toUpperCase();
+    wordEl.appendChild(hitEl);
+    if (after) wordEl.append(after.toUpperCase());
+    chip.appendChild(wordEl);
+    return chip;
   };
   return {
     id, label, maxResults: 200, defaultShow: 20, gridClass: 'word-grid',
@@ -56,23 +59,21 @@ const prefixMode = makeEdgeMode('prefix', 'Prefix', (s, q) => s.prefix(q));
 const suffixMode = makeEdgeMode('suffix', 'Suffix', (s, q) => s.suffix(q));
 
 const anagramMode = (() => {
-  const renderResult = ({ words }) => {
-    if (words.length === 1) {
-      const [[word, wordRank]] = words;
-      const el = document.createElement('div');
-      el.className = `word-item ${frequencyTier(wordRank)}`;
-      el.textContent = word.toUpperCase();
-      return el;
+  const renderResult = (item) => {
+    if (item._break) {
+      const br = document.createElement('div');
+      br.className = 'anagram-break';
+      return br;
     }
-    const el = document.createElement('div');
-    el.className = 'anagram-combo';
-    words.forEach(([word, wordRank]) => {
-      const pill = document.createElement('span');
-      pill.className = `word-item ${frequencyTier(wordRank)}`;
-      pill.textContent = word.toUpperCase();
-      el.appendChild(pill);
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    item.words.forEach(([word, rank]) => {
+      const s = document.createElement('span');
+      s.className = `hit ${frequencyTier(rank)}`;
+      s.textContent = word.toUpperCase();
+      chip.appendChild(s);
     });
-    return el;
+    return chip;
   };
   return {
     id: 'anagram', label: 'Anagram', maxResults: 200, defaultShow: 20,
@@ -93,26 +94,26 @@ const makeHiddenMode = (id, label, run) => {
     splitEl.className = 'hidden-split';
     const addSplit = (cls, text) => {
       const s = document.createElement('span');
-      s.className = cls;
+      if (cls) s.className = cls;
       s.textContent = text;
       splitEl.appendChild(s);
     };
-    addSplit('hs-ctx', '…');
-    addSplit('hs-match', tail.toUpperCase());
+    addSplit('dim', '…');
+    addSplit('hit', tail.toUpperCase());
     if (hasMid(midOptions)) {
-      addSplit('hs-ctx', ' [');
+      addSplit('dim', ' [');
       midOptions.forEach((opt, i) => {
-        if (i > 0) addSplit('hs-ctx', ' / ');
-        opt.forEach((word, j) => {
-          if (j > 0) addSplit('hs-sep', '·');
-          addSplit('hs-mid', word.toUpperCase());
+        if (i > 0) addSplit('dim', ' / ');
+        opt.forEach(([word], j) => {
+          if (j > 0) addSplit('dim', '·');
+          addSplit('hit', word.toUpperCase());
         });
       });
-      addSplit('hs-ctx', ']');
+      addSplit('dim', ']');
     }
-    addSplit('hs-ctx', ' ');
-    addSplit('hs-match', head.toUpperCase());
-    addSplit('hs-ctx', '…');
+    addSplit(null, ' ');
+    addSplit('hit', head.toUpperCase());
+    addSplit('dim', '…');
     el.appendChild(splitEl);
 
     // End-word pill sets
@@ -120,24 +121,24 @@ const makeHiddenMode = (id, label, run) => {
     pairEl.className = 'hidden-pair';
 
     const makeWordEl = (word, rank, matchPart, isTail) => {
-      const wEl = document.createElement('span');
-      wEl.className = `hw ${frequencyTier(rank)}`;
-      const addPart = (cls, text) => {
-        const s = document.createElement('span');
-        s.className = cls;
-        s.textContent = text.toUpperCase();
-        wEl.appendChild(s);
-      };
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      const wordEl = document.createElement('span');
+      wordEl.className = frequencyTier(rank);
+      const hitEl = document.createElement('span');
+      hitEl.className = 'hit';
+      hitEl.textContent = matchPart.toUpperCase();
       if (isTail) {
         const before = word.slice(0, word.length - matchPart.length);
-        if (before) addPart('hw-ctx', before);
-        addPart('hw-hit', matchPart);
+        if (before) wordEl.append(before.toUpperCase());
+        wordEl.appendChild(hitEl);
       } else {
-        addPart('hw-hit', matchPart);
+        wordEl.appendChild(hitEl);
         const after = word.slice(matchPart.length);
-        if (after) addPart('hw-ctx', after);
+        if (after) wordEl.append(after.toUpperCase());
       }
-      return wEl;
+      chip.appendChild(wordEl);
+      return chip;
     };
 
     const w0El = document.createElement('div');
@@ -148,19 +149,15 @@ const makeHiddenMode = (id, label, run) => {
     if (hasMid(midOptions)) {
       arrowEl.className = 'hidden-mid-label';
       midOptions.forEach(opt => {
-        const line = document.createElement('div');
-        opt.forEach((word, i) => {
-          if (i > 0) {
-            const sep = document.createElement('span');
-            sep.className = 'hml-sep';
-            sep.textContent = '·';
-            line.appendChild(sep);
-          }
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        opt.forEach(([word, rank]) => {
           const s = document.createElement('span');
+          s.className = `hit ${frequencyTier(rank)}`;
           s.textContent = word.toUpperCase();
-          line.appendChild(s);
+          chip.appendChild(s);
         });
-        arrowEl.appendChild(line);
+        arrowEl.appendChild(chip);
       });
     } else {
       arrowEl.className = 'hidden-arrow';
@@ -181,37 +178,37 @@ const makeHiddenMode = (id, label, run) => {
 
       // Interleave mid options so each gets at least one example
       const examples = [];
-      outer: for (const { w0, wLast } of topPairs) {
+      outer: for (const { w0, r0, wLast, rLast } of topPairs) {
         for (const midWords of midOptions) {
-          examples.push({ w0, wLast, midWords });
+          examples.push({ w0, r0, wLast, rLast, midWords });
           if (examples.length >= 4) break outer;
         }
       }
 
-      for (const { w0, wLast, midWords } of examples) {
+      for (const { w0, r0, wLast, rLast, midWords } of examples) {
         const chip = document.createElement('span');
-        chip.className = 'hx';
+        chip.className = 'chip';
 
-        const addStr = (cls, text) => {
-          const s = document.createElement('span');
-          s.className = cls;
-          s.textContent = text;
-          chip.appendChild(s);
+        const addWord = (tier, parts) => {
+          const wordEl = document.createElement('span');
+          wordEl.className = tier;
+          for (const [cls, text] of parts) {
+            if (!text) continue;
+            if (cls) {
+              const s = document.createElement('span');
+              s.className = cls;
+              s.textContent = text.toUpperCase();
+              wordEl.appendChild(s);
+            } else {
+              wordEl.append(text.toUpperCase());
+            }
+          }
+          chip.appendChild(wordEl);
         };
 
-        const before = w0.slice(0, w0.length - tail.length);
-        if (before) addStr('hx-ctx', before.toUpperCase());
-        addStr('hx-hit', tail.toUpperCase());
-
-        for (const mid of midWords) {
-          addStr('hx-sep', '·');
-          addStr('hx-mid', mid.toUpperCase());
-        }
-
-        addStr('hx-sep', '·');
-        addStr('hx-hit', head.toUpperCase());
-        const after = wLast.slice(head.length);
-        if (after) addStr('hx-ctx', after.toUpperCase());
+        addWord(frequencyTier(r0), [[null, w0.slice(0, w0.length - tail.length)], ['hit', tail]]);
+        for (const [mid, midRank] of midWords) addWord(frequencyTier(midRank), [['hit', mid]]);
+        addWord(frequencyTier(rLast), [['hit', head], [null, wLast.slice(head.length)]]);
 
         examplesEl.appendChild(chip);
       }
@@ -271,41 +268,46 @@ class ResultsSection {
       return;
     }
 
+    const realItems = items.filter(it => !it._break);
+
     header.textContent = `${this._label} · `;
     const count = document.createElement('span');
     count.className = 'count';
-    count.textContent = `${items.length} result${items.length !== 1 ? 's' : ''}`;
+    count.textContent = `${realItems.length} result${realItems.length !== 1 ? 's' : ''}`;
     header.appendChild(count);
     this._el.appendChild(header);
 
-    if (!items.length) return;
+    if (!realItems.length) return;
 
-    const showCount = this._expanded
-      ? Math.min(items.length, this._maxResults)
-      : Math.min(items.length, this._defaultShow);
+    const showReal = this._expanded
+      ? Math.min(realItems.length, this._maxResults)
+      : Math.min(realItems.length, this._defaultShow);
 
     const grid = document.createElement('div');
     grid.className = this._gridClass;
-    items.slice(0, showCount).forEach(item => {
+    let realShown = 0;
+    for (const item of items) {
+      if (realShown >= showReal) break;
       grid.appendChild(this._renderResult(item));
-    });
+      if (!item._break) realShown++;
+    }
     this._el.appendChild(grid);
 
-    if (this._expanded && items.length > this._maxResults) {
+    if (this._expanded && realItems.length > this._maxResults) {
       const note = document.createElement('p');
       note.className = 'more-note';
-      note.textContent = `Showing ${this._maxResults} of ${items.length}`;
+      note.textContent = `Showing ${this._maxResults} of ${realItems.length}`;
       this._el.appendChild(note);
     }
 
-    if (items.length > this._defaultShow) {
+    if (realItems.length > this._defaultShow) {
       const toggle = document.createElement('button');
       toggle.className = 'expand-toggle';
       if (this._expanded) {
         toggle.textContent = 'Show fewer';
         toggle.addEventListener('click', () => { this._expanded = false; this._render(); });
       } else {
-        const more = Math.min(items.length, this._maxResults) - this._defaultShow;
+        const more = Math.min(realItems.length, this._maxResults) - this._defaultShow;
         toggle.textContent = `Show ${more} more`;
         toggle.addEventListener('click', () => { this._expanded = true; this._render(); });
       }

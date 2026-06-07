@@ -1,3 +1,52 @@
+:root {
+  /* Typography */
+  --mono: Monaco, "Lucida Console", monospace;
+  --font-pill: 12px;
+
+  /* Geometry */
+  --pad-pill: 3px 8px;
+  --radius: 4px;
+
+  /* Semantic colors */
+  --color-text: #808080;
+  /* default pill text (unmatched letters) */
+  --color-match: #2563eb;
+  /* matched/highlighted text */
+  --color-chrome: #bbb;
+  /* structural chrome (arrows, brackets) */
+
+  /* Backgrounds */
+  --bg: #fafafa;
+  --bg-t1: #dffde3;
+  /* tier-1: common words */
+  --bg-t2: #fafafa;
+  /* tier-2: mid-frequency words */
+  --bg-t3: #ffefef;
+  /* tier-3: rare words */
+
+  /* Borders */
+  --border: #e0e0e0;
+  /* chips */
+  --border-ui: #ccc;
+  /* UI controls (toggles) */
+  --border-card: #e5e5e5;
+  /* cards, section dividers */
+
+  /* Text */
+  --text-muted: #888;
+  /* secondary text, status */
+  --text-faint: #aaa;
+  /* labels, inactive controls */
+  --text-strong: #555;
+  /* counts, hover emphasis */
+
+  /* Controls */
+  --toggle-on: #333;
+  /* active mode toggle */
+  --divider: #ddd;
+  /* vertical divider between controls */
+}
+
 #app {
   max-width: 640px;
   margin: 0 auto;
@@ -7,10 +56,11 @@
 #header {
   margin-bottom: 20px;
 }
+
 #header p {
   margin-top: 4px;
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted);
 }
 
 #search-form {
@@ -20,6 +70,7 @@
 #search-row {
   margin-bottom: 10px;
 }
+
 #search-row input[type="text"] {
   width: 100%;
   box-sizing: border-box;
@@ -41,45 +92,42 @@
   cursor: pointer;
   user-select: none;
 }
+
 .mode-toggle input[type="checkbox"] {
   display: none;
 }
+
 .mode-toggle span {
   padding: 3px 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-ui);
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
-  color: #888;
+  color: var(--text-muted);
   transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
-.mode-toggle input:checked + span {
-  background: #333;
-  border-color: #333;
+
+.mode-toggle input:checked+span {
+  background: var(--toggle-on);
+  border-color: var(--toggle-on);
   color: #fff;
 }
-.mode-toggle:hover span {
-  border-color: #999;
-}
 
+.mode-toggle:hover span {
+  border-color: var(--text-muted);
+}
 
 .modes-divider {
   width: 1px;
   height: 16px;
-  background: #ddd;
+  background: var(--divider);
   align-self: center;
   flex-shrink: 0;
 }
 
-.hint {
-  font-size: 12px;
-  color: #bbb;
-  margin-left: 4px;
-}
-
 #status {
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted);
   min-height: 18px;
   margin-bottom: 8px;
 }
@@ -99,11 +147,12 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #aaa;
+  color: var(--text-faint);
   margin-bottom: 10px;
 }
+
 .section-header .count {
-  color: #555;
+  color: var(--text-strong);
 }
 
 .word-grid {
@@ -112,71 +161,59 @@
   gap: 6px;
 }
 
-.anagram-combo {
-  display: flex;
-  gap: 0;
-}
-.anagram-combo .word-item {
-  border-radius: 0;
-}
-.anagram-combo .word-item:first-child {
-  border-radius: 4px 0 0 4px;
-}
-.anagram-combo .word-item:last-child {
-  border-radius: 0 4px 4px 0;
+.anagram-break {
+  flex-basis: 100%;
+  height: 0;
 }
 
+/* === Pill system ===
+   .chip — single bordered box; words inside are plain spans separated by gap
+   .hit  — matched text: blue + bold
+   .dim  — structural chrome (→, …, ·, brackets): muted
+*/
 
-/* Shared base for all word pills */
-.word-item, .hw {
-  font-family: Monaco, "Lucida Console", monospace;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: var(--font-pill);
   letter-spacing: 0.05em;
+  padding: var(--pad-pill);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-t2);
+  color: var(--color-text);
   user-select: text;
 }
 
-.word-item {
-  font-size: 13px;
-  padding: 4px 8px;
-  background: #fafafa;
-  color: #333;
-}
-.word-item:hover {
-  background: #f0f0f0;
-}
-
-.hw {
-  font-size: 12px;
-  padding: 2px 6px;
-  background: #fff;
-}
-
-/* Frequency tiers — background and border only, never text colour */
 .tier-1 {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
-}
-.tier-1:hover {
-  background: #dcfce7;
-}
-.tier-3 {
-  border-color: #d8d8d8;
-  border-style: dashed;
-  background: #ebebeb;
+  background: var(--bg-t1);
 }
 
-.contains-ctx {
-  color: #bbb;
+.tier-2 {
+  background: var(--bg-t2);
 }
-.contains-match {
-  font-weight: 700;
+
+.tier-3 {
+  background: var(--bg-t3);
 }
+
+.hit {
+  color: var(--color-match);
+  font-weight: 900;
+}
+
+.dim {
+  color: var(--color-chrome);
+}
+
+/* === Results controls === */
 
 .more-note {
   margin-top: 10px;
   font-size: 12px;
-  color: #bbb;
+  color: var(--color-chrome);
 }
 
 .expand-toggle {
@@ -186,12 +223,15 @@
   border: none;
   padding: 0;
   font-size: 12px;
-  color: #aaa;
+  color: var(--text-faint);
   cursor: pointer;
 }
+
 .expand-toggle:hover {
-  color: #555;
+  color: var(--text-strong);
 }
+
+/* === Hidden mode layout === */
 
 .grid-hidden {
   display: flex;
@@ -200,35 +240,17 @@
 }
 
 .hidden-group {
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   padding: 8px 12px;
-  background: #fafafa;
+  background: var(--bg);
 }
 
 .hidden-split {
-  font-family: Monaco, "Lucida Console", monospace;
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: var(--font-pill);
   letter-spacing: 0.04em;
   margin-bottom: 8px;
-}
-
-.hs-ctx {
-  color: #ccc;
-}
-
-.hs-match {
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.hs-mid {
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.hs-sep {
-  color: #ccc;
 }
 
 .hidden-pair {
@@ -245,16 +267,19 @@
 }
 
 .hidden-arrow {
-  color: #ccc;
+  color: var(--color-chrome);
   font-size: 14px;
   flex-shrink: 0;
   padding-top: 1px;
 }
 
+.hidden-mid-label .chip {
+  border: none;
+}
+
 .hidden-mid-label {
-  font-family: Monaco, "Lucida Console", monospace;
-  font-size: 12px;
-  color: #2563eb;
+  font-family: var(--mono);
+  font-size: var(--font-pill);
   flex-shrink: 0;
   align-self: center;
   letter-spacing: 0.05em;
@@ -264,55 +289,13 @@
   gap: 2px;
 }
 
-.hml-sep {
-  color: #ccc;
-  padding: 0 1px;
-}
-
-.hw-ctx {
-  color: #bbb;
-}
-
-.hw-hit {
-  color: #2563eb;
-  font-weight: 700;
-}
-
 .hidden-examples {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: 8px;
   padding-top: 7px;
-  border-top: 1px solid #ebebeb;
-}
-
-.hx {
-  font-family: Monaco, "Lucida Console", monospace;
-  font-size: 11px;
-  padding: 2px 6px;
-  background: #f0f0f0;
-  border-radius: 3px;
-  letter-spacing: 0.03em;
-}
-
-.hx-ctx {
-  color: #999;
-}
-
-.hx-hit {
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.hx-sep {
-  color: #ccc;
-  padding: 0 1px;
-}
-
-.hx-mid {
-  color: #2563eb;
-  font-weight: 700;
+  border-top: 1px solid var(--border-card);
 }
 
 @media (max-width: 480px) {
