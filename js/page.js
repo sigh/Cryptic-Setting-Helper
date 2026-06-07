@@ -251,7 +251,25 @@ const makeHiddenMode = (id, label, run) => {
 const hiddenMode = makeHiddenMode('hidden', 'Hidden', (s, q) => s.hidden(q));
 const hiddenReverseMode = makeHiddenMode('hiddenrev', 'Hidden reverse', (s, q) => s.hiddenReverse(q));
 
-const MODES = [matchMode, containsMode, prefixMode, suffixMode, anagramMode, hiddenMode, hiddenReverseMode];
+const alternateMode = {
+  id: 'alternate', label: 'Alternate',
+  maxResults: 200, defaultShow: 20, gridClass: 'word-grid',
+  grouped: true,
+  isValid: q => /^[a-z]+$/i.test(q),
+  renderResult: renderWordItem,
+  run: (search, query) => groupByWordCount(search.alternate(query)),
+};
+
+const alternateReverseMode = {
+  id: 'altrev', label: 'Alternate reverse',
+  maxResults: 200, defaultShow: 20, gridClass: 'word-grid',
+  grouped: true,
+  isValid: q => /^[a-z]+$/i.test(q),
+  renderResult: renderWordItem,
+  run: (search, query) => groupByWordCount(search.alternateReverse(query)),
+};
+
+const MODES = [matchMode, containsMode, prefixMode, suffixMode, anagramMode, hiddenMode, hiddenReverseMode, alternateMode, alternateReverseMode];
 
 // ---- Shared UI ----
 

@@ -4,6 +4,8 @@ class WordSearch {
   _anagramIndex = null;   // Map<sorted-letters, [word, rank][]>
   _sortedWords = null;    // [[word, rank], ...] sorted alphabetically — prefix search
   _sortedReversed = null; // [[reversed, word, rank], ...] sorted alphabetically — suffix search
+  _alt0Index = null;      // Map<even-position-letters, [word, rank][]>
+  _alt1Index = null;      // Map<odd-position-letters, [word, rank][]>
   _loadPromise = null;
 
   load() {
@@ -15,11 +17,23 @@ class WordSearch {
 
         this._wordRank = new Map();
         this._anagramIndex = new Map();
+        this._alt0Index = new Map();
+        this._alt1Index = new Map();
         this._words.forEach((w, i) => {
           this._wordRank.set(w, i);
+
           const key = w.split('').sort().join('');
           if (!this._anagramIndex.has(key)) this._anagramIndex.set(key, []);
           this._anagramIndex.get(key).push([w, i]);
+
+          const a0 = w.split('').filter((_, j) => j % 2 === 0).join('');
+          const a1 = w.split('').filter((_, j) => j % 2 === 1).join('');
+          if (!this._alt0Index.has(a0)) this._alt0Index.set(a0, []);
+          this._alt0Index.get(a0).push([w, i]);
+          if (a1.length > 0) {
+            if (!this._alt1Index.has(a1)) this._alt1Index.set(a1, []);
+            this._alt1Index.get(a1).push([w, i]);
+          }
         });
 
         this._sortedWords = this._words
@@ -39,6 +53,68 @@ class WordSearch {
     if (!/^[a-z]+$/i.test(s)) return [];
     return this._wordBreak(s.toLowerCase())
       .map(seg => seg.map(w => [w, this._wordRank.get(w) ?? 49999]));
+  }
+
+  // Returns { words: [word, rank][], rank }[] for sequences of words whose
+  // concatenation yields the query when every alternate letter is taken.
+  // Both starting parities (first letter and second letter) are tried.
+  alternate(queryStr) {
+    const query = queryStr.toLowerCase().replace(/[^a-z]/g, '');
+    if (!query.length) return [];
+
+    const n = query.length;
+    const altIdx = [this._alt0Index, this._alt1Index];
+    const LIMIT = 20;
+    const memo = new Map();
+
+    // prevShort: whether the previous word had length <= 2 (two such words in a row are banned).
+    const solve = (pos, parity, prevShort) => {
+      const key = (pos * 2 + parity) * 2 + (prevShort ? 1 : 0);
+      if (memo.has(key)) return memo.get(key);
+      if (pos === n) { memo.set(key, [[]]); return [[]]; }
+
+      const result = [];
+      const idx = altIdx[parity];
+      for (let len = 1; len <= n - pos; len++) {
+        const sub = query.slice(pos, pos + len);
+        const words = idx.get(sub);
+        if (!words) continue;
+        for (const [word, rank] of words) {
+          const thisShort = word.length <= 2;
+          if (prevShort && thisShort) continue;
+          const nextParity = (parity + word.length) % 2;
+          for (const rest of solve(pos + len, nextParity, thisShort)) {
+            result.push([[word, rank], ...rest]);
+            if (result.length >= LIMIT) break;
+          }
+          if (result.length >= LIMIT) break;
+        }
+        if (result.length >= LIMIT) break;
+      }
+      memo.set(key, result);
+      return result;
+    };
+
+    const seen = new Set();
+    const results = [];
+    for (const startParity of [0, 1]) {
+      for (const seg of solve(0, startParity, false)) {
+        const key = seg.map(([w]) => w).join('\0');
+        if (!seen.has(key)) {
+          seen.add(key);
+          results.push({ words: seg, rank: seg.reduce((s, [, r]) => s + r, 0) });
+        }
+      }
+    }
+    results.sort((a, b) =>
+      a.words.length !== b.words.length ? a.words.length - b.words.length : a.rank - b.rank
+    );
+    return results;
+  }
+
+  alternateReverse(queryStr) {
+    const rev = queryStr.toLowerCase().replace(/[^a-z]/g, '').split('').reverse().join('');
+    return this.alternate(rev);
   }
 
   // Returns [word, rank][] in frequency order, or null if pattern is invalid.
