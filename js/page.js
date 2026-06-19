@@ -72,7 +72,7 @@ const matchMode = {
   },
 };
 
-const makeEdgeMode = (id, label, run) => {
+const makeEdgeMode = (id, label, run, isValid = q => q.length > 0) => {
   const renderResult = ({ rank, before, match, after }) => {
     const chip = document.createElement('div');
     chip.className = 'chip';
@@ -89,13 +89,39 @@ const makeEdgeMode = (id, label, run) => {
   };
   return {
     id, label, maxResults: 200, defaultShow: 20, gridClass: 'word-grid',
-    isValid: q => q.length > 0, run, renderResult,
+    isValid, run, renderResult,
   };
 };
 
 const containsMode = makeEdgeMode('contains', 'Contains', (s, q) => s.contains(q));
 const prefixMode = makeEdgeMode('prefix', 'Prefix', (s, q) => s.prefix(q));
 const suffixMode = makeEdgeMode('suffix', 'Suffix', (s, q) => s.suffix(q));
+const centerMode = makeEdgeMode('center', 'Center', (s, q) => s.center(q), q => /^[a-z]+$/i.test(q));
+
+// Outside: 2-letter query → first letter starts the word, second ends it (T*N).
+const outsideMode = {
+  id: 'outside', label: 'Outside',
+  maxResults: 200, defaultShow: 20, gridClass: 'word-grid',
+  isValid: q => /^[a-z]{2}$/i.test(q),
+  run: (s, q) => s.outside(q),
+  renderResult: ([word, rank]) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    const wordEl = document.createElement('span');
+    wordEl.className = frequencyTier(rank);
+    const first = document.createElement('span');
+    first.className = 'hit';
+    first.textContent = word[0].toUpperCase();
+    wordEl.appendChild(first);
+    if (word.length > 2) wordEl.append(word.slice(1, -1).toUpperCase());
+    const last = document.createElement('span');
+    last.className = 'hit';
+    last.textContent = word[word.length - 1].toUpperCase();
+    wordEl.appendChild(last);
+    chip.appendChild(wordEl);
+    return chip;
+  },
+};
 
 const anagramMode = {
   id: 'anagram', label: 'Anagram',
@@ -269,7 +295,7 @@ const alternateReverseMode = {
   run: (search, query) => groupByWordCount(search.alternateReverse(query)),
 };
 
-const MODES = [matchMode, containsMode, prefixMode, suffixMode, anagramMode, hiddenMode, hiddenReverseMode, alternateMode, alternateReverseMode];
+const MODES = [matchMode, containsMode, prefixMode, suffixMode, centerMode, outsideMode, anagramMode, hiddenMode, hiddenReverseMode, alternateMode, alternateReverseMode];
 
 // ---- Shared UI ----
 

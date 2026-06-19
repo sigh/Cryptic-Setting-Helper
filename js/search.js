@@ -298,6 +298,37 @@ class WordSearch {
     return groups;
   }
 
+  // Returns [word, rank][] for words whose first and last letters are the two
+  // letters of the query (start + end, e.g. "TN" → T*N).
+  // Only fixed two-letter queries are accepted; returns null otherwise.
+  outside(queryStr) {
+    const q = queryStr.toLowerCase();
+    if (!/^[a-z]{2}$/.test(q)) return null;
+    return this._startsWith(q[0])
+      .filter(([w]) => w[w.length - 1] === q[1])
+      .sort((a, b) => a[1] - b[1]);  // _startsWith is alphabetical; restore frequency order
+  }
+
+  // Returns {word, rank, before, match, after}[] for words containing the fixed
+  // query string exactly in their centre (equal letters on each side).
+  // Only fixed letter strings are accepted; returns null otherwise.
+  center(queryStr) {
+    const q = queryStr.toLowerCase();
+    if (!/^[a-z]+$/.test(q)) return null;
+    const m = q.length;
+    const results = [];
+    for (let i = 0; i < this._words.length; i++) {
+      const w = this._words[i];
+      const diff = w.length - m;
+      if (diff <= 0 || diff % 2 !== 0) continue;  // need equal, non-empty sides
+      const side = diff / 2;
+      if (w.slice(side, side + m) === q) {
+        results.push({ word: w, rank: i, before: w.slice(0, side), match: q, after: w.slice(side + m) });
+      }
+    }
+    return results;
+  }
+
   // Returns {word, rank, match, after}[] for words starting with the pattern.
   // Requires at least one char after the match. Null if pattern invalid.
   prefix(patternStr) {
